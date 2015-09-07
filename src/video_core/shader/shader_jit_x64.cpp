@@ -2,6 +2,7 @@
 // Licensed under GPLv2 or any later version
 // Refer to the license.txt file included.
 
+#include <set>
 #include <smmintrin.h>
 
 #include "common/x64/abi.h"
@@ -195,7 +196,7 @@ void JitCompiler::Compile_SwizzleSrc(Instruction instr, unsigned src_num, Source
 
     // Generate instructions for source register swizzling as needed
     u8 sel = swiz.GetRawSelector(src_num);
-    if (sel != NO_SRC_REG_SWIZZLE) {
+    if (SwizzlingIsNeeded(instr, swiz, src_num)) {
         // Selector component order needs to be reversed for the SHUFPS instruction
         sel = ((sel & 0xc0) >> 6) | ((sel & 3) << 6) | ((sel & 0xc) << 2) | ((sel & 0x30) >> 2);
 
@@ -208,6 +209,46 @@ void JitCompiler::Compile_SwizzleSrc(Instruction instr, unsigned src_num, Source
     if (negate[src_num - 1]) {
         XORPS(dest, R(NEGBIT));
     }
+}
+
+bool JitCompiler::SwizzlingIsNeeded(Instruction instr, SwizzlePattern swiz, unsigned int src_num) const {
+    u8 sel = (u8)swiz.GetRawSelector(src_num);
+    if (sel == NO_SRC_REG_SWIZZLE)
+        return false;
+
+    static std::set<OpCode::Id> vertical_instrs {
+        OpCode::Id::ADD, OpCode::Id::MUL,
+        OpCode::Id::SGE, OpCode::Id::SLT,
+        OpCode::Id::FLR,
+        OpCode::Id::MAX, OpCode::Id::MIN,
+        OpCode::Id::MOVA, OpCode::Id::MOV,
+        OpCode::Id::SGEI, OpCode::Id::SLTI,
+        OpCode::Id::MAD, OpCode::Id::MADI
+    };
+
+    using Selector = SwizzlePattern::Selector;
+
+    // vertical instruction swizzling can be optimized with the destination mask
+    if (vertical_instrs.find(instr.opcode.Value().EffectiveOpCode()) != vertical_instrs.end()) {
+        u8 no_swiz = NO_SRC_REG_SWIZZLE;
+        u8 real_swiz = swiz.DestComponentEnabled((u32)Selector::x) ? (u8)(sel & 0xC0) : (u8)(no_swiz & 0xC0);
+        real_swiz |=   swiz.DestComponentEnabled((u32)Selector::y) ? (u8)(sel & 0x30) : (u8)(no_swiz & 0x30);
+        real_swiz |=   swiz.DestComponentEnabled((u32)Selector::z) ? (u8)(sel & 0x0C) : (u8)(no_swiz & 0x0C);
+        real_swiz |=   swiz.DestComponentEnabled((u32)Selector::w) ? (u8)(sel & 0x03) : (u8)(no_swiz & 0x03);
+
+        return real_swiz != NO_SRC_REG_SWIZZLE;
+    }
+
+    static std::set<OpCode::Id> transc_instrs {
+        OpCode::Id::EX2, OpCode::Id::RCP,
+        OpCode::Id::RCP, OpCode::Id::RSQ
+    };
+
+    if (transc_instrs.find(instr.opcode.Value().EffectiveOpCode()) != transc_instrs.end()) {
+        return (sel & 0xC0) != (u32)Selector::x;
+    }
+
+    return true;
 }
 
 void JitCompiler::Compile_DestEnable(Instruction instr,X64Reg src) {

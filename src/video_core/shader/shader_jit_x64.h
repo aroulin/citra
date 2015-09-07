@@ -84,6 +84,8 @@ private:
 
     /// Set to true if currently in a loop, used to check for the existence of nested loops
     bool looping = false;
+
+    bool SwizzlingIsNeeded(Instruction instr, SwizzlePattern swiz, unsigned int src_num) const;
 };
 
 } // Shader
