@@ -194,10 +194,10 @@ void JitCompiler::Compile_SwizzleSrc(Instruction instr, unsigned src_num, Source
     SwizzlePattern swiz = { g_state.vs.swizzle_data[operand_desc_id] };
 
     // Generate instructions for source register swizzling as needed
-    u8 sel = swiz.GetRawSelector(src_num);
+    u8 sel = (u8)swiz.GetRawSelector(src_num);
     if (sel != NO_SRC_REG_SWIZZLE) {
         // Selector component order needs to be reversed for the SHUFPS instruction
-        sel = ((sel & 0xc0) >> 6) | ((sel & 3) << 6) | ((sel & 0xc) << 2) | ((sel & 0x30) >> 2);
+        sel = (u8)(((sel & 0xc0) >> 6) | ((sel & 3) << 6) | ((sel & 0xc) << 2) | ((sel & 0x30) >> 2));
 
         // Shuffle inputs for swizzle
         SHUFPS(dest, R(dest), sel);
@@ -234,7 +234,7 @@ void JitCompiler::Compile_DestEnable(Instruction instr,X64Reg src) {
         MOVAPS(SCRATCH, MDisp(REGISTERS, UnitState<false>::OutputOffset(dest)));
 
         if (Common::GetCPUCaps().sse4_1) {
-            u8 mask = ((swiz.dest_mask & 1) << 3) | ((swiz.dest_mask & 8) >> 3) | ((swiz.dest_mask & 2) << 1) | ((swiz.dest_mask & 4) >> 1);
+            u8 mask = (u8)(((swiz.dest_mask & 1) << 3) | ((swiz.dest_mask & 8) >> 3) | ((swiz.dest_mask & 2) << 1) | ((swiz.dest_mask & 4) >> 1));
             BLENDPS(SCRATCH, R(src), mask);
         } else {
             MOVAPS(SCRATCH2, R(src));
@@ -242,10 +242,10 @@ void JitCompiler::Compile_DestEnable(Instruction instr,X64Reg src) {
             UNPCKLPS(SCRATCH, R(src)); // Unpack Z/W components of source and destination
 
             // Compute selector to selectively copy source components to destination for SHUFPS instruction
-            u8 sel = ((swiz.DestComponentEnabled(0) ? 1 : 0) << 0) |
-                     ((swiz.DestComponentEnabled(1) ? 3 : 2) << 2) |
-                     ((swiz.DestComponentEnabled(2) ? 0 : 1) << 4) |
-                     ((swiz.DestComponentEnabled(3) ? 2 : 3) << 6);
+            u8 sel = (u8)(((swiz.DestComponentEnabled(0) ? 1 : 0) << 0) |
+                          ((swiz.DestComponentEnabled(1) ? 3 : 2) << 2) |
+                          ((swiz.DestComponentEnabled(2) ? 0 : 1) << 4) |
+                          ((swiz.DestComponentEnabled(3) ? 2 : 3) << 6));
             SHUFPS(SCRATCH, R(SCRATCH2), sel);
         }
 
