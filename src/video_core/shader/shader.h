@@ -263,6 +263,8 @@ struct UnitState {
         Math::Vec4<float24> MEMORY_ALIGNED16(temporary[16]);
     } registers;
     static_assert(std::is_pod<Registers>::value, "Structure is not POD");
+    static_assert(sizeof(Registers) < std::numeric_limits<int>::max(),
+                  "Shader JIT assumes a register offset (in bytes) can be stored in a signed int");
 
     u32 program_counter;
     bool conditional_code[2];
@@ -292,10 +294,10 @@ struct UnitState {
     static int InputOffset(const SourceRegister& reg) {
         switch (reg.GetRegisterType()) {
         case RegisterType::Input:
-            return (int)offsetof(UnitState::Registers, input) + reg.GetIndex()*sizeof(Math::Vec4<float24>);
+            return (int)(offsetof(UnitState::Registers, input) + reg.GetIndex()*sizeof(Math::Vec4<float24>));
 
         case RegisterType::Temporary:
-            return (int)offsetof(UnitState::Registers, temporary) + reg.GetIndex()*sizeof(Math::Vec4<float24>);
+            return (int)(offsetof(UnitState::Registers, temporary) + reg.GetIndex()*sizeof(Math::Vec4<float24>));
 
         default:
             UNREACHABLE();
@@ -306,10 +308,10 @@ struct UnitState {
     static int OutputOffset(const DestRegister& reg) {
         switch (reg.GetRegisterType()) {
         case RegisterType::Output:
-            return (int)offsetof(UnitState::Registers, output) + reg.GetIndex()*sizeof(Math::Vec4<float24>);
+            return (int)(offsetof(UnitState::Registers, output) + reg.GetIndex()*sizeof(Math::Vec4<float24>));
 
         case RegisterType::Temporary:
-            return (int)offsetof(UnitState::Registers, temporary) + reg.GetIndex()*sizeof(Math::Vec4<float24>);
+            return (int)(offsetof(UnitState::Registers, temporary) + reg.GetIndex()*sizeof(Math::Vec4<float24>));
 
         default:
             UNREACHABLE();

@@ -1149,6 +1149,8 @@ struct State {
             std::array<bool, 16> b;
             std::array<Math::Vec4<u8>, 4> i;
         } uniforms;
+        static_assert(sizeof(uniforms) < std::numeric_limits<int>::max(),
+                      "Shader JIT assumes a register offset (in bytes) can be stored in a signed int");
 
         Math::Vec4<float24> default_attributes[16];
 

@@ -148,7 +148,7 @@ void JitCompiler::Compile_SwizzleSrc(Instruction instr, unsigned src_num, Source
 
     if (src_reg.GetRegisterType() == RegisterType::FloatUniform) {
         src_ptr = UNIFORMS;
-        src_offset = src_reg.GetIndex() * sizeof(float24) * 4;
+        src_offset = (int)(src_reg.GetIndex() * sizeof(float24) * 4);
     } else {
         src_ptr = REGISTERS;
         src_offset = UnitState<false>::InputOffset(src_reg);
